@@ -1,0 +1,106 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}List sorter - Listen{% endblock %}
+{% block styles %}
+{{super()}}
+<link rel="stylesheet" href="{{url_for('.static', filename='css/jumbotron-narrow.css')}}">
+<link rel="stylesheet" href="{{url_for('.static', filename='css/mystuff.css')}}">
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+{{super()}}
+    </div> <!-- container -->
+{% endblock %}
+
+
+{% block navbar %}
+      <!-- Static navbar -->
+      <nav class="navbar navbar-default">
+        <div class="container-fluid">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">List sorter</a>
+          </div>
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+              <li class="active"><a href="/">Home</a></li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+              <li><a href="https://de.dariah.eu">DARIAH-DE</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div><!--/.container-fluid -->
+      </nav>
+{% endblock %}
+
+{% block content %}
+      <div class="jumbotron">
+        <h1>Listen Überblick</h1>
+        <p class="lead">Klicke auf einen Eintrag, um ihn zu bearbeiten oder prüfe eine neue Mail-Adresse.</p>
+        <form class="form-inline">
+          <div class="form-group">
+            <input type="email" class="form-control" id="InputEmail" placeholder="jane.doe@example.com">
+          </div>
+          <button type="button" class="btn btn-default btn-sm" id="InputBtn" data-toggle="modal" data-target="#pruefModal">
+            Prüfen
+          </button>
+        </form>
+      </div>
+
+
+
+      <div class="row">
+        <div class="col-md-4">
+          <h2>Whitelist <span class="badge">{{ whitenumber }}</span> 
+            <a href="download/white.txt" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
+          {{ whiteliststring|safe }} 
+        </div>
+        <div class="col-md-4">
+          <h2>Graylist <span class="badge">{{ graynumber }}</span></h2>
+          {{ grayliststring|safe }} 
+        </div>
+        <div class="col-md-4">
+          <h2>Backlist <span class="badge">{{ blacknumber }}</span>
+            <a href="download/black.txt" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
+          {{ blackliststring|safe }} 
+        </div>
+      </div>
+
+<!-- Modal -->
+<div class="modal fade" id="pruefModal" tabindex="-1" role="dialog" aria-labelledby="pruefModalTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="pruefModalTitle">Ergebnis</h4>
+      </div>
+      <div class="modal-body" id="pruefModalText">
+        <div id="pruefModalAlert" role="alert">
+          ...
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form id="pruefModalForm" action="">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary" id="pruefModalDecideBtn" disabled>Decide</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{{super()}}
+    <script src="/static/js/mystuff.js"></script>
+    <script type="text/javascript">
+    {{ javascriptarraystring|safe }}
+    </script>
+{% endblock %}
+

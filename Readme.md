@@ -27,5 +27,9 @@ Create the files `white.txt`, `gray.txt` and `black.txt` with domain lists of th
 
 Optionally create `settings_local.py` and add 
 ````
-DEBUG = True
+DEBUG=True
+````
+If you want to enable eduGain checks, add
+````
+EDUGAIN_CHECK=True
 ````

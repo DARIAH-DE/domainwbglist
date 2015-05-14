@@ -1,2 +1,4 @@
 flask
 flask-bootstrap
+requests[security]
+

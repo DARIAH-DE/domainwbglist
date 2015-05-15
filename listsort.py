@@ -6,6 +6,7 @@ from flask import render_template
 from flask import request
 from flask import url_for
 from flask import redirect
+from flask import jsonify
 from flask import send_from_directory
 from flask_bootstrap import Bootstrap
 
@@ -19,20 +20,6 @@ app.config.update(
 app.config.from_pyfile('settings_local.py', silent=True)
 Bootstrap(app)
 
-def edugain_check(domain):
-    """Call the eduGAIN isFederatedCheck to identify institutional domains."""
-    federationhit = '"Federated":true'
-    edugainhit = '"eduGAIN-Enabled":true'
-    callurl = app.config['RESTURL']+domain
-    response = requests.get(callurl)
-    # Check, if the appropriate strings are contained in the response.
-    # Response is json, but not fully documented and somewhat unpredictable.
-    if (int(str(response.content).find(edugainhit)) > 0 or
-            int(str(response.content).find(federationhit)) > 0):
-        edugainresult = True
-    else:
-        edugainresult = False
-    return edugainresult
 
 def list_as_array(listname):
     """Returns the specified list as array."""
@@ -71,30 +58,6 @@ def list_to_htmlstring(listarray):
     liststring += '</div>'
     return liststring
 
-def javascript_array_string():
-    """Returns a string with javascript arrays of all three lists."""
-    whitelist = list_as_array('white')
-    blacklist = list_as_array('black')
-    graylist = list_as_array('gray')
-    jsstring = ''
-    jsstring = 'var whitelist = new Array('
-    for item in whitelist:
-        jsstring += '"' + item + '",'
-    if jsstring[-1:] == ',':      # no trailing comma
-        jsstring = jsstring[:-1]
-    jsstring = jsstring + ');\n    var graylist = new Array('
-    for item in graylist:
-        jsstring += '"' + item + '",'
-    if jsstring[-1:] == ',':      # no trailing comma
-        jsstring = jsstring[:-1]
-    jsstring = jsstring + ');\n    var blacklist = new Array('
-    for item in blacklist:
-        jsstring += '"' + item + '",'
-    if jsstring[-1:] == ',':      # no trailing comma
-        jsstring = jsstring[:-1]
-    jsstring = jsstring + ');\n'
-    return jsstring
-
 def domain_to_list(domain, listname):
     """Put the domain on the specified list and remove it from all others."""
     for eachlist in app.config['LISTFILES'].iterkeys():
@@ -109,6 +72,51 @@ def domain_to_list(domain, listname):
         save_array_as_list(listarray, eachlist)
     return True
 
+@app.route('/api/')
+def edugain_result():
+    """Return info on list status of domain or call eduGAIN isFederatedCheck"""
+    if 'edugain' in request.args.keys():
+        domain = request.args.get('edugain')
+        federationhit = '"Federated":true'
+        edugainhit = '"eduGAIN-Enabled":true'
+        callurl = app.config['RESTURL']+domain
+        response = requests.get(callurl)
+        # Check, if the appropriate strings are contained in the response.
+        # Response is json, but not fully documented and somewhat unpredictable.
+        if int(str(response.content).find(federationhit)) > 0:
+            edugainfederationresult = True
+        else:
+            edugainfederationresult = False
+        if int(str(response.content).find(edugainhit)) > 0:
+            edugainresult = True
+        else:
+            edugainresult = False
+        return jsonify(data=domain,
+                       edugain=edugainresult,
+                       federation=edugainfederationresult)
+    elif 'list' in request.args.keys():
+        domain = request.args.get('list')
+        white = list_as_array('white')
+        black = list_as_array('black')
+        gray = list_as_array('gray')
+        if domain in white:
+            whiteresult = True
+        else:
+            whiteresult = False
+        if domain in black:
+            blackresult = True
+        else:
+            blackresult = False
+        if domain in gray:
+            grayresult = True
+        else:
+            grayresult = False
+        return jsonify(data=domain,
+                       white=whiteresult,
+                       black=blackresult,
+                       gray=grayresult)
+
+
 @app.route('/decide/')
 @app.route('/decide/<name>', methods=['GET', 'POST'])
 def decidepage(name=None):
@@ -116,20 +124,15 @@ def decidepage(name=None):
 
     If a POST is received, the approriate list changes are called.
     Otherwise the page for deciding the list to put it on it rendered.
-    If enabled, the eduGAIN isFederatedCheck will be performed.
     """
     if request.method == 'POST':
         domain_to_list(name, request.form['list'])
         return redirect(url_for('mainpage'))
     else:
-        domain = name.strip('@')
-        edugainresult = False
-        if app.config['EDUGAIN_CHECK']:
-            edugainresult = edugain_check(domain)
         return render_template('decide.html',
                                name=name,
-                               url='http://'+domain,
-                               edugainresult=edugainresult)
+                               url='http://'+name.strip('@'),
+                               edugaincheck=app.config['EDUGAIN_CHECK'])
 
 @app.route('/download/')
 @app.route('/download/<name>', methods=['GET', 'POST'])
@@ -150,7 +153,6 @@ def mainpage():
                            whiteliststring=whiteliststring,
                            blackliststring=blackliststring,
                            grayliststring=grayliststring,
-                           javascriptarraystring=javascript_array_string(),
                            whitenumber=len(list_as_array('white')),
                            blacknumber=len(list_as_array('black')),
                            graynumber=len(list_as_array('gray')))

@@ -29,7 +29,7 @@ Optionally create `settings_local.py` and add
 ````
 DEBUG=True
 ````
-If you want to enable eduGain checks, add
+If you want to enable the use of eduGAIN's isFederatedCheck, add
 ````
 EDUGAIN_CHECK=True
 ````

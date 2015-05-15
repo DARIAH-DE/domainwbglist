@@ -18,47 +18,54 @@ jQuery(document).ready(function($) {
         var domain = '';
         var result = '';
         var atsymb = input.indexOf("@");
-        if (input == '') { result = 'Keine Eingabe.'}
+        if (input == '') { $('#pruefModalAlert').text('Keine Eingabe.')}
         else { 
-          if (atsymb < 0) { result = 'Kein @ enthalten.'}
+          if (atsymb < 0) { $('#pruefModalAlert').text('Kein @ enthalten.')}
           else {
-            domain = input.substring(atsymb);
-            $('#pruefModalDecideBtn').prop('disabled', false);
-            $('#pruefModalForm').attr('action', '/decide/'+domain);
+            queryDomain = input.substring(atsymb);
+            $.ajax({
+              dataType: 'json',
+              url: '/api',
+              type: 'GET',
+              data: 'list='+queryDomain,
+              success: function(data) { 
+                $('#pruefModalDecideBtn').prop('disabled', false);
+                $('#pruefModalForm').attr('action', '/decide/'+queryDomain);
 
-            $('#pruefModalAlert').toggleClass('alert', true);
-            $('#pruefModalAlert').toggleClass('alert-success', false);
-            $('#pruefModalAlert').toggleClass('alert-danger', false);
-            $('#pruefModalAlert').toggleClass('alert-warning', true);
-            result = 'Domain ' + domain + ' unbekannt!';
-            if (whitelist.indexOf(domain) > -1) {
-              $('#pruefModalAlert').toggleClass('alert', true);
-              $('#pruefModalAlert').toggleClass('alert-success', true);
-              $('#pruefModalAlert').toggleClass('alert-danger', false);
-              $('#pruefModalAlert').toggleClass('alert-warning', false);
-              $('#pruefModalDecideBtn').text('Ändern');
-              result = 'Domain ' + domain + ' ist auf Whitelist!';
-            }
-            if (graylist.indexOf(domain) > -1) {
-              $('#pruefModalAlert').toggleClass('alert', true);
-              $('#pruefModalAlert').toggleClass('alert-success', false);
-              $('#pruefModalAlert').toggleClass('alert-danger', false);
-              $('#pruefModalAlert').toggleClass('alert-warning', true);
-              $('#pruefModalDecideBtn').text('Ändern');
-              result = 'Domain ' + domain + ' ist auf Graylist!';
-            }
-            if (blacklist.indexOf(domain) > -1) {
-              $('#pruefModalAlert').toggleClass('alert', true);
-              $('#pruefModalAlert').toggleClass('alert-success', false);
-              $('#pruefModalAlert').toggleClass('alert-danger', true);
-              $('#pruefModalAlert').toggleClass('alert-warning', false);
-              $('#pruefModalDecideBtn').text('Ändern');
-              result = 'Domain ' + domain + ' ist auf Blacklist!';
-            }
+                $('#pruefModalAlert').toggleClass('alert', true);
+                $('#pruefModalAlert').toggleClass('alert-success', false);
+                $('#pruefModalAlert').toggleClass('alert-danger', false);
+                $('#pruefModalAlert').toggleClass('alert-warning', true);
+                result = 'Domain ' + queryDomain + ' unbekannt!';
+                if (data.white) {
+                  $('#pruefModalAlert').toggleClass('alert', true);
+                  $('#pruefModalAlert').toggleClass('alert-success', true);
+                  $('#pruefModalAlert').toggleClass('alert-danger', false);
+                  $('#pruefModalAlert').toggleClass('alert-warning', false);
+                  $('#pruefModalDecideBtn').text('Ändern');
+                  result = 'Domain ' + queryDomain + ' ist auf Whitelist!';
+                }
+                if (data.gray) {
+                  $('#pruefModalAlert').toggleClass('alert', true);
+                  $('#pruefModalAlert').toggleClass('alert-success', false);
+                  $('#pruefModalAlert').toggleClass('alert-danger', false);
+                  $('#pruefModalAlert').toggleClass('alert-warning', true);
+                  $('#pruefModalDecideBtn').text('Ändern');
+                  result = 'Domain ' + queryDomain + ' ist auf Graylist!';
+                }
+                if (data.black) {
+                  $('#pruefModalAlert').toggleClass('alert', true);
+                  $('#pruefModalAlert').toggleClass('alert-success', false);
+                  $('#pruefModalAlert').toggleClass('alert-danger', true);
+                  $('#pruefModalAlert').toggleClass('alert-warning', false);
+                  $('#pruefModalDecideBtn').text('Ändern');
+                  result = 'Domain ' + queryDomain + ' ist auf Blacklist!';
+                }
+                $('#pruefModalAlert').text(result);
+              }
+            });
           }
         }
-        $('#pruefModalAlert').text(result);
-      // do something...
     });
 });
 

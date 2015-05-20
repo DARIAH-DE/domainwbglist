@@ -30,7 +30,7 @@ jQuery(document).ready(function($) {
               data: 'list='+queryDomain,
               success: function(data) { 
                 $('#pruefModalDecideBtn').prop('disabled', false);
-                $('#pruefModalForm').attr('action', '/decide/'+queryDomain);
+                $('#pruefModalForm').attr('action', window.location+'/decide/'+queryDomain);
 
                 $('#pruefModalAlert').toggleClass('alert', true);
                 $('#pruefModalAlert').toggleClass('alert-success', false);

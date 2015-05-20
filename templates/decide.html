@@ -85,7 +85,27 @@
 {{super()}}
     <script src="{{ url_for('static', filename='js/mystuff.js')}}"></script>
 {% if edugaincheck -%}
-    <script src="{{ url_for('static', filename='js/myedugaincheck.js')}}"></script>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+      queryDomain = $('#decideUrl').text();
+      $('#btnWhiteList').prop('disabled', true);
+      $.ajax({
+        dataType: 'json',
+        url: '{{ url_for('mainpage') }}api',
+        type: 'GET',
+        data: 'edugain='+queryDomain,
+        success: function(data) { 
+          if (data.edugain || data.federation) {
+            $('#checkEduresultAlert').toggleClass('alert-success', true);
+            $('#checkEduresultAlert').html('<b>Domain '+queryDomain+' hat den eduGain-Test bestanden!</b>');
+            $('#btnWhiteList').prop('disabled', false);
+          } else {
+            $('#checkEduresultAlert').html('Domain '+queryDomain+' hat den eduGain-Test <b>nicht</b> bestanden!');
+          }
+        }
+      });
+    });
+    </script>
 {%- endif %}
 {% endblock %}
 

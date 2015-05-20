@@ -98,6 +98,6 @@
 
 {% block scripts %}
 {{super()}}
-    <script src="/static/js/mystuff.js"></script>
+    <script src="{{ url_for('static', filename='js/mystuff.js')}}"></script>
 {% endblock %}
 

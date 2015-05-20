@@ -25,7 +25,7 @@ jQuery(document).ready(function($) {
             queryDomain = input.substring(atsymb);
             $.ajax({
               dataType: 'json',
-              url: '/api',
+              url: window.location+'/api',
               type: 'GET',
               data: 'list='+queryDomain,
               success: function(data) { 

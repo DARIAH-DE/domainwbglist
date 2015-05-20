@@ -3,7 +3,7 @@ jQuery(document).ready(function($) {
   $('#btnWhiteList').prop('disabled', true);
   $.ajax({
     dataType: 'json',
-    url: '/api',
+    url: window.location+'/api',
     type: 'GET',
     data: 'edugain='+queryDomain,
     success: function(data) { 

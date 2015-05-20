@@ -7,7 +7,7 @@ Setup
 
 Install python dependencies on Ubuntu:
 ````
-apt-get install python-pip python-virtualenv
+apt-get install python-pip python-virtualenv python-dev build-essential libffi-dev
 ````
 
 Start by creating a virtualenv

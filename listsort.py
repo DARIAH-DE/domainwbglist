@@ -53,7 +53,7 @@ def list_to_htmlstring(listarray):
     """Renders the HTML code for listing the given listarray on the page."""
     liststring = '<div class="list-group">'
     for element in listarray:
-        liststring += ('<a href="/decide/'+element+'" '
+        liststring += ('<a href="'+url_for('decidepage')+element+'" '
                        'class="list-group-item">'+element+'</a>')
     liststring += '</div>'
     return liststring

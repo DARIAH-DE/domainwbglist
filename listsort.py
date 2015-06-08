@@ -20,7 +20,6 @@ app.config.update(
 app.config.from_pyfile('settings_local.py', silent=True)
 Bootstrap(app)
 
-
 def list_as_array(listname):
     """Returns the specified list as array."""
     if not listname in app.config['LISTFILES'].iterkeys():
@@ -71,6 +70,11 @@ def domain_to_list(domain, listname):
                 pass
         save_array_as_list(listarray, eachlist)
     return True
+
+def sanitize_entry(entry):
+    """Sanitize an entry to a domain name."""
+    sanitized_entry = entry[entry.find('@'):].strip()
+    return sanitized_entry.lower()
 
 @app.route('/api/')
 def edugain_result():
@@ -143,19 +147,44 @@ def downloadfile(name=None):
 
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def mainpage():
     """Render the main page with all three lists."""
-    whiteliststring = list_to_htmlstring(list_as_array('white'))
-    blackliststring = list_to_htmlstring(list_as_array('black'))
-    grayliststring = list_to_htmlstring(list_as_array('gray'))
+    whitelistarray = list_as_array('white')
+    blacklistarray = list_as_array('black')
+    graylistarray = list_as_array('gray')
+    whiteliststring = list_to_htmlstring(whitelistarray)
+    blackliststring = list_to_htmlstring(blacklistarray)
+    grayliststring = list_to_htmlstring(graylistarray)
+    counter_all = 0
+    counter_white = 0
+    counter_black = 0
+    counter_added_to_graylist = 0
+    if request.method == 'POST':
+        mailfile = request.files['mailfile']
+        for aline in mailfile.readlines():
+            checkline = sanitize_entry(aline)
+            if checkline in whitelistarray:
+                counter_white += 1
+            elif checkline in blacklistarray:
+                counter_black += 1
+            elif checkline not in graylistarray:
+                domain_to_list(checkline,'gray')
+                counter_added_to_graylist += 1
+                graylistarray = list_as_array('gray')
+                grayliststring = list_to_htmlstring(graylistarray)
+            counter_all += 1
     return render_template('main.html',
                            whiteliststring=whiteliststring,
                            blackliststring=blackliststring,
                            grayliststring=grayliststring,
-                           whitenumber=len(list_as_array('white')),
-                           blacknumber=len(list_as_array('black')),
-                           graynumber=len(list_as_array('gray')))
+                           whitenumber=len(whitelistarray),
+                           blacknumber=len(blacklistarray),
+                           graynumber=len(graylistarray),
+                           counter_all=counter_all,
+                           counter_white=counter_white,
+                           counter_black=counter_black,
+                           counter_added_to_graylist=counter_added_to_graylist)
 
 if __name__ == "__main__":
     app.run()

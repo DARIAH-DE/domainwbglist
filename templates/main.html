@@ -4,6 +4,7 @@
 {{super()}}
 <link rel="stylesheet" href="{{url_for('.static', filename='css/jumbotron-narrow.css')}}">
 <link rel="stylesheet" href="{{url_for('.static', filename='css/mystuff.css')}}">
+<link rel="stylesheet" href="{{url_for('.static', filename='css/jasny-bootstrap.min.css')}}">
 {% endblock %}
 
 {% block body %}
@@ -61,7 +62,8 @@
           {{ whiteliststring|safe }} 
         </div>
         <div class="col-md-4">
-          <h2>Graylist <span class="badge">{{ graynumber }}</span></h2>
+          <h2>Graylist <span class="badge">{{ graynumber }}</span>
+            <button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#mailupload"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span></button></h2>
           {{ grayliststring|safe }} 
         </div>
         <div class="col-md-4">
@@ -71,7 +73,33 @@
         </div>
       </div>
 
-<!-- Modal -->
+<!-- Modal mailuploadModal -->
+<div class="modal fade" id="mailupload" tabindex="-1" role="dialog" aria-labelledby="mailuploadTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('mainpage') }}" method="post" enctype="multipart/form-data">
+
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="mailuploadTitle">Upload Mails</h4>
+        </div>
+        <div class="modal-body" id="mailuploadModalText">
+          <div class="fileinput fileinput-new input-group" data-provides="fileinput">
+            <div class="form-control" data-trigger="fileinput"><i class="glyphicon glyphicon-file fileinput-exists"></i> <span class="fileinput-filename"></span></div>
+            <span class="input-group-addon btn btn-default btn-file"><span class="fileinput-new">Select file</span><span class="fileinput-exists">Change</span><input type="file" name="mailfile"></span>
+            <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" id="mailuploadBtn">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal pruefModal -->
 <div class="modal fade" id="pruefModal" tabindex="-1" role="dialog" aria-labelledby="pruefModalTitle" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -93,11 +121,48 @@
     </div>
   </div>
 </div>
+
+{% if counter_all != 0  -%}
+<!-- Modal mailuploadresultModal -->
+<div class="modal fade" id="mailuploadresultModal" tabindex="-1" role="dialog" aria-labelledby="mailuploadresultModalTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="mailuploadresultModalTitle">Ergebnis</h4>
+      </div>
+      <div class="modal-body" id="mailuploadresultModalText">
+        <div id="pruefModalAlert" role="alert">
+          Mails verarbeitet: {{ counter_all }} <br/>
+          In Whitelist: {{ counter_white }} <br/>
+          In Blacklist: {{ counter_black }} <br/>
+          {% if counter_added_to_graylist != 0  -%}
+          Domains zur Graylist hinzugef&uuml;gt: {{ counter_added_to_graylist }}
+          {%- endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form id="mailuploadresultModalForm" action="">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endif %}
 {% endblock %}
 
 
 {% block scripts %}
 {{super()}}
     <script src="{{ url_for('static', filename='js/mystuff.js')}}"></script>
+    <script src="{{ url_for('static', filename='js/jasny-bootstrap.min.js')}}"></script>
+{% if counter_all != 0  -%}
+<script type="text/javascript">
+    $(window).load(function(){
+        $('#mailuploadresultModal').modal('show');
+    });
+</script>
+{%- endif %}
 {% endblock %}
 

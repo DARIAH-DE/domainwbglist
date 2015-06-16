@@ -7,7 +7,7 @@ from flask import request
 from flask import url_for
 from flask import redirect
 from flask import jsonify
-from flask import send_from_directory
+from flask import make_response
 from flask_bootstrap import Bootstrap
 
 app = Flask(__name__)
@@ -142,10 +142,21 @@ def decidepage(name=None):
 @app.route('/download/<name>', methods=['GET', 'POST'])
 def downloadfile(name=None):
     """Download lists."""
-    return send_from_directory(directory=os.path.dirname(__file__),
-                               filename=name, as_attachment=True)
-
-
+    if name == 'white.ldif':
+        DC = 'dn: dc=whitelist,dc=dariah,dc=eu'
+        array = list_as_array('white')
+    elif name == 'black.ldif':
+        DC = 'dn: dc=blacklist,dc=dariah,dc=eu'
+        array = list_as_array('black') 
+    else:
+        return false
+    arraystring = DC+"\nchangetype: modify\nreplace: cNAMERecord\n"
+    for line in array:
+        arraystring += "cNAMERecord: "+line[1:]+"\n"
+    arraystring += "\n"
+    response = make_response(arraystring)
+    response.headers["Content-Disposition"] = "attachment; filename="+name
+    return response
 
 @app.route('/', methods=['GET', 'POST'])
 def mainpage():

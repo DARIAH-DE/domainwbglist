@@ -1,5 +1,6 @@
 import os
 import requests
+import re
 from flask import Flask
 
 from flask import render_template
@@ -59,22 +60,30 @@ def list_to_htmlstring(listarray):
 
 def domain_to_list(domain, listname):
     """Put the domain on the specified list and remove it from all others."""
-    for eachlist in app.config['LISTFILES'].iterkeys():
-        listarray = list_as_array(eachlist)
-        if listname == eachlist:
-            listarray.append(domain)
-        else:
-            try:
-                listarray.remove(domain)
-            except ValueError:
-                pass
-        save_array_as_list(listarray, eachlist)
-    return True
+    domain = sanitize_entry(domain)
+    if domain != '':
+        for eachlist in app.config['LISTFILES'].iterkeys():
+            listarray = list_as_array(eachlist)
+            if listname == eachlist:
+                listarray.append(domain)
+            else:
+                try:
+                    listarray.remove(domain)
+                except ValueError:
+                    pass
+            save_array_as_list(listarray, eachlist)
+        return True
+    else:
+        return False
 
 def sanitize_entry(entry):
     """Sanitize an entry to a domain name."""
     sanitized_entry = entry[entry.find('@'):].strip()
-    return sanitized_entry.lower()
+    regex = re.compile("^@[A-Za-z0-9-.]*$")
+    if regex.match(sanitized_entry):
+        return sanitized_entry.lower()
+    else:
+        return ''
 
 @app.route('/api/')
 def edugain_result():
@@ -130,7 +139,7 @@ def decidepage(name=None):
     Otherwise the page for deciding the list to put it on it rendered.
     """
     if request.method == 'POST':
-        domain_to_list(name, request.form['list'])
+        domain_to_list(sanitize_entry(name), request.form['list'])
         return redirect(url_for('mainpage'))
     else:
         return render_template('decide.html',
@@ -180,10 +189,10 @@ def mainpage():
             elif checkline in blacklistarray:
                 counter_black += 1
             elif checkline not in graylistarray:
-                domain_to_list(checkline,'gray')
-                counter_added_to_graylist += 1
-                graylistarray = list_as_array('gray')
-                grayliststring = list_to_htmlstring(graylistarray)
+                if domain_to_list(checkline,'gray'):
+                    counter_added_to_graylist += 1
+                    graylistarray = list_as_array('gray')
+                    grayliststring = list_to_htmlstring(graylistarray)
             counter_all += 1
     return render_template('main.html',
                            whiteliststring=whiteliststring,

@@ -53,12 +53,10 @@
         </form>
       </div>
 
-
-
       <div class="row">
         <div class="col-md-4">
-          <h2>Whitelist <span class="badge" id="whitenumber"></span> 
-            <a href="download/white.ldif" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
+          <h2>Whitelist <span class="badge" id="whitenumber"></span></h2>
+
             <div class="list-group" id="whitelist">
             </div>
         </div>
@@ -69,8 +67,7 @@
             </div>          
         </div>
         <div class="col-md-4">
-          <h2>Backlist <span class="badge" id="blacknumber"></span>
-            <a href="download/black.ldif" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
+          <h2>Backlist <span class="badge" id="blacknumber"></span></h2>
             <div class="list-group" id="blacklist">
             </div>
         </div>
@@ -183,8 +180,7 @@
 </div>
 
 
-
-{% if counter_all != 0  -%}
+{% if false -%}
 <!-- Modal mailuploadresultModal -->
 <div class="modal fade" id="mailuploadresultModal" tabindex="-1" role="dialog" aria-labelledby="mailuploadresultModalTitle" aria-hidden="true">
   <div class="modal-dialog">
@@ -219,12 +215,5 @@
 {{super()}}
     <script src="{{ url_for('static', filename='js/mystuff.js')}}"></script>
     <script src="{{ url_for('static', filename='js/jasny-bootstrap.min.js')}}"></script>
-{% if counter_all != 0  -%}
-<script type="text/javascript">
-    $(window).load(function(){
-        $('#mailuploadresultModal').modal('show');
-    });
-</script>
-{%- endif %}
 {% endblock %}
 

@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import re
+import ldap
 from flask import Flask
 
 from flask import render_template
@@ -24,13 +25,36 @@ app.config.update(
 app.config.from_pyfile('settings_local.py', silent=True)
 Bootstrap(app)
 
-def list_as_array(listname):
-    """Returns the specified list as array."""
-    if not listname in app.config['LISTFILES'].iterkeys():
-        raise NameError('invalid list name')
+def load_list_from_ldap(ldapdn):
+    l = ldap.initialize(app.config['LDAP_URL'])
+    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+    obj=l.search_s(ldapdn, ldap.SCOPE_BASE, attrlist=["cNAMERecord"])
+    for dn,entry in obj:
+        res = entry['cNAMERecord']
+    res.sort()
+    return res
+
+def add_to_ldap_list(domain,ldapdn):
+    l = ldap.initialize(app.config['LDAP_URL'])
+    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
     try:
-        openfile = open(os.path.join(os.path.dirname(__file__),
-                        app.config['LISTFILES'][listname]), "r")
+        l.modify_s(ldapdn,[(ldap.MOD_ADD,'cNAMERecord',domain)])
+    except ldap.TYPE_OR_VALUE_EXISTS:
+        # already there
+        pass
+
+def remove_from_ldap_list(domain,ldapdn):
+    l = ldap.initialize(app.config['LDAP_URL'])
+    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+    try:
+        l.modify_s(ldapdn,[(ldap.MOD_DELETE,'cNAMERecord',domain)])
+    except ldap.NO_SUCH_ATTRIBUTE:
+        # not even on there
+        pass
+
+def load_graylist():
+    try:
+        openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "r")
     except IOError:
         return []
     listarray = []
@@ -41,13 +65,9 @@ def list_as_array(listname):
     openfile.close()
     return listarray
 
-def save_array_as_list(array, listname):
-    """Save a given array as specified listname."""
-    if not listname in app.config['LISTFILES'].iterkeys():
-        raise NameError('invalid list name')
-    openfile = open(os.path.join(os.path.dirname(__file__),
-                    app.config['LISTFILES'][listname]), "w")
-    for item in array:
+def save_graylist(listarray):
+    openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "w")
+    for item in listarray:
         openfile.write("%s\n" % item)
     openfile.close()
     return True
@@ -56,24 +76,31 @@ def domain_to_list(domain, listname):
     """Put the domain on the specified list and remove it from all others."""
     domain = sanitize_entry(domain)
     if domain != '':
-        for eachlist in app.config['LISTFILES'].iterkeys():
-            listarray = list_as_array(eachlist)
-            if listname == eachlist:
-                listarray.append(domain)
-            else:
-                try:
-                    listarray.remove(domain)
-                except ValueError:
-                    pass
-            save_array_as_list(listarray, eachlist)
+        graylistarray = load_graylist()
+        try:
+            graylistarray.remove(domain)
+        except ValueError:
+            pass
+        if listname == 'white':
+            add_to_ldap_list(domain,app.config['LDAP_WHITE_DN'])
+            remove_from_ldap_list(domain,app.config['LDAP_BLACK_DN'])
+        elif listname == 'black':
+            add_to_ldap_list(domain,app.config['LDAP_BLACK_DN'])
+            remove_from_ldap_list(domain,app.config['LDAP_WHITE_DN'])
+        else:
+            remove_from_ldap_list(domain,app.config['LDAP_WHITE_DN'])
+            remove_from_ldap_list(domain,app.config['LDAP_BLACK_DN'])
+            graylistarray.append(domain)
+        save_graylist(graylistarray)
         return True
     else:
         return False
 
 def sanitize_entry(entry):
-    """Sanitize an entry to a domain name."""
-    sanitized_entry = entry[entry.find('@'):].strip()
-    regex = re.compile("^@[A-Za-z0-9-.]*$")
+    """Sanitize an entry to a domain name and return as string."""
+    stringed_entry = entry.encode('ascii','ignore')
+    sanitized_entry = stringed_entry[stringed_entry.find('@')+1:].strip()
+    regex = re.compile("^[A-Za-z0-9-.]*$")
     if regex.match(sanitized_entry):
         return sanitized_entry.lower()
     else:
@@ -82,11 +109,11 @@ def sanitize_entry(entry):
 @app.route('/api/list/<path:path>', methods=['GET'])
 def apilistcall(path):
     if path == 'white':
-        return Response(response=json.dumps(list_as_array('white')), status=200, mimetype='application/json')
+        return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_WHITE_DN'])), status=200, mimetype='application/json')
     elif path == 'black':
-        return Response(response=json.dumps(list_as_array('black')), status=200, mimetype='application/json')
+        return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps(list_as_array('gray')), status=200, mimetype='application/json')
+        return Response(response=json.dumps(load_graylist()), status=200, mimetype='application/json')
 
 @app.route('/api/domain/<path:path>', methods=['GET'])
 def apicheckdomain():
@@ -117,9 +144,9 @@ def edugain_result():
                        federation=edugainfederationresult)
     elif 'list' in request.args.keys():
         domain = request.args.get('list')
-        white = list_as_array('white')
-        black = list_as_array('black')
-        gray = list_as_array('gray')
+        white = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
+        black = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
+        gray = load_graylist()
         if domain in white:
             whiteresult = True
         else:
@@ -138,61 +165,12 @@ def edugain_result():
                        gray=grayresult)
 
 
-@app.route('/decide/')
-@app.route('/decide/<name>', methods=['GET', 'POST'])
-def decidepage(name=None):
-    """Render and process the decision page.
-
-    If a POST is received, the approriate list changes are called.
-    Otherwise the page for deciding the list to put it on it rendered.
-    """
-    if request.method == 'POST':
-        domain_to_list(sanitize_entry(name), request.form['list'])
-        return redirect(url_for('mainpage'))
-    else:
-        return render_template('decide.html',
-                               name=name,
-                               url='http://'+name.strip('@'),
-                               edugaincheck=app.config['EDUGAIN_CHECK'])
-
-@app.route('/download/')
-@app.route('/download/<name>', methods=['GET', 'POST'])
-def downloadfile(name=None):
-    """Download lists."""
-    if name == 'white.ldif':
-        DC = 'dn: dc=whitelist,dc=dariah,dc=eu'
-        array = list_as_array('white')
-    elif name == 'black.ldif':
-        DC = 'dn: dc=blacklist,dc=dariah,dc=eu'
-        array = list_as_array('black')
-    else:
-        return false
-    arraystring = DC+"\nchangetype: modify\nreplace: cNAMERecord\n"
-    for line in array:
-        arraystring += "cNAMERecord: "+line[1:]+"\n"
-    arraystring += "\n"
-    response = make_response(arraystring)
-    response.headers["Content-Disposition"] = "attachment; filename="+name
-    return response
-
 @app.route('/', methods=['GET', 'POST'])
 def mainpage():
-    """Render the main page with all three lists."""
-    whitelistarray = list_as_array('white')
-    blacklistarray = list_as_array('black')
-    graylistarray = list_as_array('gray')
-    counter_all = 0
-    counter_white = 0
-    counter_black = 0
-    counter_added_to_graylist = 0
+    """Render the main page."""
     if request.method == 'POST':
         domain_to_list(sanitize_entry(request.form['domain']), request.form['list'])
-    return render_template('main.html',
-                           edugaincheck=app.config['EDUGAIN_CHECK'],
-                           counter_all=counter_all,
-                           counter_white=counter_white,
-                           counter_black=counter_black,
-                           counter_added_to_graylist=counter_added_to_graylist)
+    return render_template('main.html', edugaincheck=app.config['EDUGAIN_CHECK'])
 
 if __name__ == "__main__":
     app.run()

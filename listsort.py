@@ -1,5 +1,6 @@
 import os
 import requests
+import json
 import re
 from flask import Flask
 
@@ -9,6 +10,8 @@ from flask import url_for
 from flask import redirect
 from flask import jsonify
 from flask import make_response
+from flask import Response
+
 from flask_bootstrap import Bootstrap
 
 app = Flask(__name__)
@@ -16,7 +19,7 @@ app.config.update(
     BOOTSTRAP_SERVE_LOCAL='True',
     RESTURL='https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
     LISTFILES={"white" : "white.txt", "gray":"gray.txt", "black":"black.txt"},
-    EDUGAIN_CHECK=False
+    EDUGAIN_CHECK=True
 )
 app.config.from_pyfile('settings_local.py', silent=True)
 Bootstrap(app)
@@ -49,15 +52,6 @@ def save_array_as_list(array, listname):
     openfile.close()
     return True
 
-def list_to_htmlstring(listarray):
-    """Renders the HTML code for listing the given listarray on the page."""
-    liststring = '<div class="list-group">'
-    for element in listarray:
-        liststring += ('<a href="'+url_for('decidepage')+element+'" '
-                       'class="list-group-item">'+element+'</a>')
-    liststring += '</div>'
-    return liststring
-
 def domain_to_list(domain, listname):
     """Put the domain on the specified list and remove it from all others."""
     domain = sanitize_entry(domain)
@@ -84,6 +78,20 @@ def sanitize_entry(entry):
         return sanitized_entry.lower()
     else:
         return ''
+
+@app.route('/api/list/<path:path>', methods=['GET'])
+def apilistcall(path):
+    if path == 'white':
+        return Response(response=json.dumps(list_as_array('white')), status=200, mimetype='application/json')
+    elif path == 'black':
+        return Response(response=json.dumps(list_as_array('black')), status=200, mimetype='application/json')
+    else:
+        return Response(response=json.dumps(list_as_array('gray')), status=200, mimetype='application/json')
+
+@app.route('/api/domain/<path:path>', methods=['GET'])
+def apicheckdomain():
+    pass
+
 
 @app.route('/api/')
 def edugain_result():
@@ -156,7 +164,7 @@ def downloadfile(name=None):
         array = list_as_array('white')
     elif name == 'black.ldif':
         DC = 'dn: dc=blacklist,dc=dariah,dc=eu'
-        array = list_as_array('black') 
+        array = list_as_array('black')
     else:
         return false
     arraystring = DC+"\nchangetype: modify\nreplace: cNAMERecord\n"
@@ -173,34 +181,14 @@ def mainpage():
     whitelistarray = list_as_array('white')
     blacklistarray = list_as_array('black')
     graylistarray = list_as_array('gray')
-    whiteliststring = list_to_htmlstring(whitelistarray)
-    blackliststring = list_to_htmlstring(blacklistarray)
-    grayliststring = list_to_htmlstring(graylistarray)
     counter_all = 0
     counter_white = 0
     counter_black = 0
     counter_added_to_graylist = 0
     if request.method == 'POST':
-        mailfile = request.files['mailfile']
-        for aline in mailfile.readlines():
-            checkline = sanitize_entry(aline)
-            if checkline in whitelistarray:
-                counter_white += 1
-            elif checkline in blacklistarray:
-                counter_black += 1
-            elif checkline not in graylistarray:
-                if domain_to_list(checkline,'gray'):
-                    counter_added_to_graylist += 1
-                    graylistarray = list_as_array('gray')
-                    grayliststring = list_to_htmlstring(graylistarray)
-            counter_all += 1
+        domain_to_list(sanitize_entry(request.form['domain']), request.form['list'])
     return render_template('main.html',
-                           whiteliststring=whiteliststring,
-                           blackliststring=blackliststring,
-                           grayliststring=grayliststring,
-                           whitenumber=len(whitelistarray),
-                           blacknumber=len(blacklistarray),
-                           graynumber=len(graylistarray),
+                           edugaincheck=app.config['EDUGAIN_CHECK'],
                            counter_all=counter_all,
                            counter_white=counter_white,
                            counter_black=counter_black,

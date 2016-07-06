@@ -57,19 +57,22 @@
 
       <div class="row">
         <div class="col-md-4">
-          <h2>Whitelist <span class="badge">{{ whitenumber }}</span> 
+          <h2>Whitelist <span class="badge" id="whitenumber"></span> 
             <a href="download/white.ldif" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
-          {{ whiteliststring|safe }} 
+            <div class="list-group" id="whitelist">
+            </div>
         </div>
         <div class="col-md-4">
-          <h2>Graylist <span class="badge">{{ graynumber }}</span>
-            <button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#mailupload"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span></button></h2>
-          {{ grayliststring|safe }} 
+          <h2>Graylist <span class="badge" id="graynumber"></span>
+            <!--<button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#mailupload"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span></button>--></h2>
+            <div class="list-group" id="graylist">
+            </div>          
         </div>
         <div class="col-md-4">
-          <h2>Backlist <span class="badge">{{ blacknumber }}</span>
+          <h2>Backlist <span class="badge" id="blacknumber"></span>
             <a href="download/black.ldif" role="button" class="btn btn-default pull-right" aria-label="Download"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></a></h2>
-          {{ blackliststring|safe }} 
+            <div class="list-group" id="blacklist">
+            </div>
         </div>
       </div>
 
@@ -113,14 +116,73 @@
         </div>
       </div>
       <div class="modal-footer">
-        <form id="pruefModalForm" action="">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary" id="pruefModalDecideBtn" disabled>Decide</button>
-        </form>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="pruefModalDecideBtn" disabled="true" data-dismiss="modal" data-toggle="modal" data-target="#decideModal">Decide</button>
       </div>
     </div>
   </div>
 </div>
+
+
+<!-- Modal decideModal -->
+<div class="modal fade" id="decideModal" tabindex="-1" role="dialog" aria-labelledby="decideModalTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="decideModalTitle">Erst Checken, dann einordnen!</h4>
+      </div>
+      <div class="modal-body" id="pruefModalText">
+        <div id="decideModalAlert" role="alert">
+
+        <p class="lead">Erst Checken, dann einordnen!</p>
+        <p class="lead"><a id="manualcheckbutton" href="" role="button" class="btn btn-lg btn-primary btnCheck" target="_blank">Check</a></p>
+        {% if edugaincheck -%}
+        <div id="checkEduresultAlert" role="alert" class="alert">
+          Teste eduGain ...
+          <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>
+        </div>
+        {%- endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+
+        <div class="row">
+          <div class="col-md-4">
+            <div class="text-center">
+              <form method="post" role="form">
+                <input type="hidden" name="list" value="white">
+                <input type="hidden" name="domain" value="" class="domainname">
+                <button type="submit" class="btn btn-lg btn-success" id="btnWhiteList" disabled="true">Whitelist</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="text-center">
+              <form method="post" role="form">
+                <input type="hidden" name="list" value="gray">
+                <input type="hidden" name="domain" value="" class="domainname">
+                <button type="submit" class="btn btn-lg btn-default" id="btnGrayList" disabled="true">Graylist</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="text-center">
+              <form method="post" role="form">
+                <input type="hidden" name="list" value="black">
+                <input type="hidden" name="domain" value="" class="domainname">
+                <button type="submit" class="btn btn-lg btn-danger" id="btnBlackList" disabled="true">Blacklist</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 {% if counter_all != 0  -%}
 <!-- Modal mailuploadresultModal -->

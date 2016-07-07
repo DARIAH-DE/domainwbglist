@@ -130,8 +130,8 @@ def refresh_graylist():
         dict: Infos on the number of checks and results.
     """
     mails = l.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
-    white = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
-    black = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
+    white = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
+    black = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
     gray = load_graylist()
     whitecounter = 0
     blackcounter = 0

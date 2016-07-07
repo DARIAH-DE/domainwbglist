@@ -2,3 +2,5 @@ flask
 flask-bootstrap
 requests[security]
 pyldap
+flask-sso
+

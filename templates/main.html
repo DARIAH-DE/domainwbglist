@@ -25,7 +25,19 @@
                 <div class="collapse navbar-collapse">
                   <ul class="nav pull-right navbar-nav">                  
                     <li>
-                      <!--a href="#"><i class="fa fa-sign-in"></i> Login</a-->
+
+{% if username != None %}
+
+                      <a class="dropdown-toggle" data-toggle="dropdown" href="#"><i class="fa fa-user"></i>
+                        {{ username }} <span class="caret"></span>
+                      </a>
+                      <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i> Logout</a></li>
+                      </ul>
+
+{% else %}
+                      <a href="{{ url_for('sso_login') }}"><i class="fa fa-sign-in"></i> Login</a>
+{% endif %}
                     </li>
                     
                   </ul>
@@ -74,7 +86,9 @@
 
 
         <h1>Listen Überblick</h1>
+{% if userisadmin %}
         <p class="lead">Klicke auf einen Eintrag, um ihn zu bearbeiten oder prüfe eine neue Mail-Adresse.</p>
+{% endif %}
         <form>
         <div>
           <div class="form-inline">
@@ -96,7 +110,9 @@
         </div>
         <div class="col-md-4">
           <h2>Graylist <span class="badge" id="graynumber"></span>
+{% if userisadmin %}
             <button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#refreshmailsModal"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
+{% endif %}
           </h2>
           <div class="list-group" id="graylist">
           </div>          
@@ -130,31 +146,6 @@
 
 
 
-<!-- Modal mailuploadModal -->
-<div class="modal fade" id="mailupload" tabindex="-1" role="dialog" aria-labelledby="mailuploadTitle" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form action="{{ url_for('mainpage') }}" method="post" enctype="multipart/form-data">
-
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <h4 class="modal-title" id="mailuploadTitle">Upload Mails</h4>
-        </div>
-        <div class="modal-body" id="mailuploadModalText">
-          <div class="fileinput fileinput-new input-group" data-provides="fileinput">
-            <div class="form-control" data-trigger="fileinput"><i class="glyphicon glyphicon-file fileinput-exists"></i> <span class="fileinput-filename"></span></div>
-            <span class="input-group-addon btn btn-default btn-file"><span class="fileinput-new">Select file</span><span class="fileinput-exists">Change</span><input type="file" name="mailfile"></span>
-            <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" id="mailuploadBtn">Upload</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
 
 <!-- Modal pruefModal -->
 <div class="modal fade" id="pruefModal" tabindex="-1" role="dialog" aria-labelledby="pruefModalTitle" aria-hidden="true">
@@ -171,13 +162,15 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+{% if userisadmin %}
         <button type="button" class="btn btn-primary" id="pruefModalDecideBtn" disabled="true" data-dismiss="modal" data-toggle="modal" data-target="#decideModal">Decide</button>
+{% endif %}
       </div>
     </div>
   </div>
 </div>
 
-
+{% if userisadmin %}
 <!-- Modal decideModal -->
 <div class="modal fade" id="decideModal" tabindex="-1" role="dialog" aria-labelledby="decideModalTitle" aria-hidden="true">
   <div class="modal-dialog">
@@ -235,8 +228,9 @@
     </div>
   </div>
 </div>
+{% endif %}
 
-
+{% if userisadmin %}
 <!-- Modal refreshmailsModal -->
 <div class="modal fade" id="refreshmailsModal" tabindex="-1" role="dialog" aria-labelledby="refreshmailsModalTitle" aria-hidden="true">
   <div class="modal-dialog">
@@ -257,6 +251,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 
     <noscript>

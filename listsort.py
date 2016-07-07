@@ -12,21 +12,49 @@ from flask import redirect
 from flask import jsonify
 from flask import make_response
 from flask import Response
+from flask import session
 
-from flask_bootstrap import Bootstrap
+from flask_sso import SSO
 
 app = Flask(__name__)
 app.config.update(
-    BOOTSTRAP_SERVE_LOCAL='True',
     RESTURL='https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
     LISTFILES={"white" : "white.txt", "gray":"gray.txt", "black":"black.txt"},
     EDUGAIN_CHECK=True
 )
 app.config.from_pyfile('settings_local.py', silent=True)
-Bootstrap(app)
+
+app.config.setdefault('SSO_ATTRIBUTE_MAP', app.config['SSO_ATTRIBUTE_MAP'])
+app.config.setdefault('SSO_LOGIN_URL', '/login')
+ext = SSO(app=app)
 
 l = ldap.initialize(app.config['LDAP_URL'])
 l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+
+def userisadmin():
+    """Whether the currently logged in user is an admin.
+
+    Returns:
+        bool: ebd.
+    """
+    ret = False
+    if 'user' in session:
+        user_groups = session['user'].get('isMemberOf').split(';')
+        admin_groups = app.config['ADMIN_GROUPS'].split(';')
+        groups_intersection = set.intersection(set(user_groups),set(admin_groups))
+        if groups_intersection:
+            ret = True
+    return ret
+
+@ext.login_handler
+def login(user_info):
+    session['user'] = user_info
+    return redirect(url_for('mainpage'))
+
+@app.route('/logout')
+def logout():
+    session.pop('user')
+    return redirect(url_for('mainpage'))
 
 # Exception class http://flask.pocoo.org/docs/0.10/patterns/apierrors/
 class InvalidAPIUsage(Exception):
@@ -238,7 +266,7 @@ def edugaincheck(checkaddress):
     Returns:
         json: The edugain and federation statuses as booleans.
     """
-    if not app.config['EDUGAIN_CHECK']:
+    if not (app.config['EDUGAIN_CHECK'] and userisadmin()):
         raise InvalidAPIUsage('Not available.', status_code=500)
     federationhit = '"Federated":true'
     edugainhit = '"eduGAIN-Enabled":true'
@@ -275,14 +303,19 @@ def apicheckdomain(address):
     elif domain in load_graylist():
         return jsonify(listed='gray')
     else:
+        if 'user' in session:
+            domain_to_list(domain, 'gray')
         return jsonify(listed=None)
 
 @app.route('/', methods=['GET', 'POST'])
 def mainpage():
     """Render the page."""
-    if request.method == 'POST':
+    username = None
+    if 'user' in session:
+        username = session['user'].get('username')
+    if request.method == 'POST' and userisadmin():
         domain_to_list(sanitize_entry(request.form['domain']), request.form['list'])
-    return render_template('main.html', edugaincheck=app.config['EDUGAIN_CHECK'])
+    return render_template('main.html', username=username, userisadmin=userisadmin(), edugaincheck=app.config['EDUGAIN_CHECK'])
 
 if __name__ == "__main__":
     app.run()

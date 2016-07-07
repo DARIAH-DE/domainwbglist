@@ -25,9 +25,10 @@ app.config.update(
 app.config.from_pyfile('settings_local.py', silent=True)
 Bootstrap(app)
 
+l = ldap.initialize(app.config['LDAP_URL'])
+l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+
 def load_list_from_ldap(ldapdn):
-    l = ldap.initialize(app.config['LDAP_URL'])
-    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
     obj=l.search_s(ldapdn, ldap.SCOPE_BASE, attrlist=["cNAMERecord"])
     for dn,entry in obj:
         res = entry['cNAMERecord']
@@ -35,8 +36,6 @@ def load_list_from_ldap(ldapdn):
     return res
 
 def add_to_ldap_list(domain,ldapdn):
-    l = ldap.initialize(app.config['LDAP_URL'])
-    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
     try:
         l.modify_s(ldapdn,[(ldap.MOD_ADD,'cNAMERecord',domain)])
     except ldap.TYPE_OR_VALUE_EXISTS:
@@ -44,8 +43,6 @@ def add_to_ldap_list(domain,ldapdn):
         pass
 
 def remove_from_ldap_list(domain,ldapdn):
-    l = ldap.initialize(app.config['LDAP_URL'])
-    l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
     try:
         l.modify_s(ldapdn,[(ldap.MOD_DELETE,'cNAMERecord',domain)])
     except ldap.NO_SUCH_ATTRIBUTE:
@@ -71,6 +68,31 @@ def save_graylist(listarray):
         openfile.write("%s\n" % item)
     openfile.close()
     return True
+
+def refresh_graylist():
+    mails = l.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
+    white = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
+    black = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
+    gray = load_graylist()
+    whitecounter = 0
+    blackcounter = 0
+    graycounter = 0
+    newlyadded = 0
+    for dn,entry in mails:
+        for mailaddress in entry['mail']:
+            domain = sanitize_entry(mailaddress)
+            if domain in white:
+                whitecounter += 1
+            elif domain in black:
+                blackcounter += 1
+            elif domain in gray:
+                graycounter += 1
+            elif domain != '':
+                newlyadded += 1
+                domain_to_list(domain, 'gray')
+    results = {'mails_on_whitelist': whitecounter, 'mails_on_blacklist': blackcounter,
+            'mails_on_graylist': graycounter, 'mails_from_new_domains': newlyadded}
+    return results
 
 def domain_to_list(domain, listname):
     """Put the domain on the specified list and remove it from all others."""
@@ -106,6 +128,16 @@ def sanitize_entry(entry):
     else:
         return ''
 
+def check_list(domain):
+    if domain in load_list_from_ldap(app.config['LDAP_WHITE_DN']):
+        return 'white'
+    elif domain in load_list_from_ldap(app.config['LDAP_BLACK_DN']):
+        return 'black'
+    elif domain in load_graylist():
+        return 'gray'
+    else:
+        return None
+
 @app.route('/api/list/<path:path>', methods=['GET'])
 def apilistcall(path):
     if path == 'white':
@@ -114,6 +146,11 @@ def apilistcall(path):
         return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
     else:
         return Response(response=json.dumps(load_graylist()), status=200, mimetype='application/json')
+
+@app.route('/api/refresh', methods=['GET'])
+def apirefreshcall():
+    return jsonify(refresh_graylist())
+
 
 @app.route('/api/domain/<path:path>', methods=['GET'])
 def apicheckdomain():

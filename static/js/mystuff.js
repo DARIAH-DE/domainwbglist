@@ -105,6 +105,27 @@ jQuery(document).ready(function($) {
     $('#checkEduresultAlert').html('Teste eduGain ... <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>');
   });
 
+  $('#refreshmailsModal').on('show.bs.modal', function(e) {
+    $('#refreshmailsModalText').html('Wirklich alle Mailadressen im LDAP suchen und gegen Listen mappen? <button type="button" class="btn btn-warning" id="refreshmailsModalButton">Ja!</button>');
+
+    $('#refreshmailsModalButton').on('click', function(){
+      $('#refreshmailsModalText').html('Working ... <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>');
+
+      $.ajax({
+        dataType: 'json',
+        url: 'api/refresh',
+        type: 'GET',
+        success: function(data) { 
+          console.log(data);
+          $('#refreshmailsModalText').html('Adressen auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>E-Mail-Adressen von bislang unbekannten Domains: '+data['mails_from_new_domains']);
+        }
+      });
+
+
+
+    });
+
+  });
 
 
 });

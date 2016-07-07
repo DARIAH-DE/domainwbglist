@@ -56,20 +56,20 @@
       <div class="row">
         <div class="col-md-4">
           <h2>Whitelist <span class="badge" id="whitenumber"></span></h2>
-
-            <div class="list-group" id="whitelist">
-            </div>
+          <div class="list-group" id="whitelist">
+          </div>
         </div>
         <div class="col-md-4">
           <h2>Graylist <span class="badge" id="graynumber"></span>
-            <!--<button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#mailupload"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span></button>--></h2>
-            <div class="list-group" id="graylist">
-            </div>          
+            <button type="button" class="btn btn-default pull-right" id="InputBtn" data-toggle="modal" data-target="#refreshmailsModal"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
+          </h2>
+          <div class="list-group" id="graylist">
+          </div>          
         </div>
         <div class="col-md-4">
           <h2>Backlist <span class="badge" id="blacknumber"></span></h2>
-            <div class="list-group" id="blacklist">
-            </div>
+          <div class="list-group" id="blacklist">
+          </div>
         </div>
       </div>
 
@@ -180,34 +180,26 @@
 </div>
 
 
-{% if false -%}
 <!-- Modal mailuploadresultModal -->
-<div class="modal fade" id="mailuploadresultModal" tabindex="-1" role="dialog" aria-labelledby="mailuploadresultModalTitle" aria-hidden="true">
+<div class="modal fade" id="refreshmailsModal" tabindex="-1" role="dialog" aria-labelledby="refreshmailsModalTitle" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="mailuploadresultModalTitle">Ergebnis</h4>
+        <h4 class="modal-title" id="refreshmailsModalTitle">Graylist refreshen</h4>
       </div>
-      <div class="modal-body" id="mailuploadresultModalText">
-        <div id="pruefModalAlert" role="alert">
-          Zeilen verarbeitet: {{ counter_all }} <br/>
-          In Whitelist: {{ counter_white }} <br/>
-          In Blacklist: {{ counter_black }} <br/>
-          {% if counter_added_to_graylist != 0  -%}
-          Domains zur Graylist hinzugef&uuml;gt: {{ counter_added_to_graylist }}
-          {%- endif %}
+      <div class="modal-body" id="refreshmailsModalText">
+        <div id="refreshmailsModalAlert" role="alert">
         </div>
       </div>
       <div class="modal-footer">
-        <form id="mailuploadresultModalForm" action="">
+        <form id="refreshmailsModalForm" action="">
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
         </form>
       </div>
     </div>
   </div>
 </div>
-{%- endif %}
 {% endblock %}
 
 

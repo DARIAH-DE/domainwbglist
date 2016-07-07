@@ -28,7 +28,36 @@ Bootstrap(app)
 l = ldap.initialize(app.config['LDAP_URL'])
 l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
 
+# Exception class http://flask.pocoo.org/docs/0.10/patterns/apierrors/
+class InvalidAPIUsage(Exception):
+    status_code = 400
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['error'] = self.message
+        return rv
+
+# register errorhandler
+@app.errorhandler(InvalidAPIUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
 def load_list_from_ldap(ldapdn):
+    """Load a list from an ldap entry.
+
+    Args:
+        ldapdn (str): The DN of the ldap entry to load.
+
+    Returns:
+        list of str: Sorted array of domains in specified list.
+    """
     obj=l.search_s(ldapdn, ldap.SCOPE_BASE, attrlist=["cNAMERecord"])
     for dn,entry in obj:
         res = entry['cNAMERecord']
@@ -36,6 +65,12 @@ def load_list_from_ldap(ldapdn):
     return res
 
 def add_to_ldap_list(domain,ldapdn):
+    """Add a domain to an ldap entry.
+
+    Args:
+        domain (str): The domain to add.
+        ldapdn (str): The DN of the ldap entry to remove the domain from.
+    """
     try:
         l.modify_s(ldapdn,[(ldap.MOD_ADD,'cNAMERecord',domain)])
     except ldap.TYPE_OR_VALUE_EXISTS:
@@ -43,6 +78,12 @@ def add_to_ldap_list(domain,ldapdn):
         pass
 
 def remove_from_ldap_list(domain,ldapdn):
+    """Remove a domain from an ldap entry.
+
+    Args:
+        domain (str): The domain to remove.
+        ldapdn (str): The DN of the ldap entry to add the domain to.
+    """
     try:
         l.modify_s(ldapdn,[(ldap.MOD_DELETE,'cNAMERecord',domain)])
     except ldap.NO_SUCH_ATTRIBUTE:
@@ -50,6 +91,11 @@ def remove_from_ldap_list(domain,ldapdn):
         pass
 
 def load_graylist():
+    """Load the graylist from file.
+
+    Returns:
+        list of str: Sorted array of domains in graylist.
+    """
     try:
         openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "r")
     except IOError:
@@ -63,6 +109,14 @@ def load_graylist():
     return listarray
 
 def save_graylist(listarray):
+    """Write the graylist back to file.
+
+    Args:
+        listarray (list of str): Array of domains to save as graylist.
+
+    Returns:
+        bool: True.
+    """
     openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "w")
     for item in listarray:
         openfile.write("%s\n" % item)
@@ -70,6 +124,11 @@ def save_graylist(listarray):
     return True
 
 def refresh_graylist():
+    """Refresh the graylist by loading all mail addresses and adding them if they are not yet known.
+
+    Returns:
+        dict: Infos on the number of checks and results.
+    """
     mails = l.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
     white = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
     black = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
@@ -95,7 +154,15 @@ def refresh_graylist():
     return results
 
 def domain_to_list(domain, listname):
-    """Put the domain on the specified list and remove it from all others."""
+    """Put the domain on the specified list and remove it from all others.
+
+    Args:
+        domain (str): The domain to add.
+        listname (str): Whether to add to 'white' or 'black' lists.
+
+    Returns:
+        bool: Whether a domain was parsed.
+    """
     domain = sanitize_entry(domain)
     if domain != '':
         graylistarray = load_graylist()
@@ -119,7 +186,14 @@ def domain_to_list(domain, listname):
         return False
 
 def sanitize_entry(entry):
-    """Sanitize an entry to a domain name and return as string."""
+    """Sanitize an entry to a domain name and return as string.
+
+    Args:
+        entry (str): String to extract domain from.
+
+    Returns:
+        str: Extracted domain or empty string.
+    """
     stringed_entry = entry.encode('ascii','ignore')
     sanitized_entry = stringed_entry[stringed_entry.find('@')+1:].strip()
     regex = re.compile("^[A-Za-z0-9-.]*$")
@@ -128,83 +202,84 @@ def sanitize_entry(entry):
     else:
         return ''
 
-def check_list(domain):
-    if domain in load_list_from_ldap(app.config['LDAP_WHITE_DN']):
-        return 'white'
-    elif domain in load_list_from_ldap(app.config['LDAP_BLACK_DN']):
-        return 'black'
-    elif domain in load_graylist():
-        return 'gray'
-    else:
-        return None
+@app.route('/api/list/<listname>', methods=['GET'])
+def apilistcall(listname):
+    """API Call to get a full list as JSON.
 
-@app.route('/api/list/<path:path>', methods=['GET'])
-def apilistcall(path):
-    if path == 'white':
+    Args:
+        listname (str): The name of the list to return.
+
+    Returns:
+        json: Array of the domains on the list.
+    """
+    if listname == 'white':
         return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_WHITE_DN'])), status=200, mimetype='application/json')
-    elif path == 'black':
+    elif listname == 'black':
         return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
     else:
         return Response(response=json.dumps(load_graylist()), status=200, mimetype='application/json')
 
 @app.route('/api/refresh', methods=['GET'])
 def apirefreshcall():
+    """API Call to refresh the graylist.
+
+    Returns:
+        json: Infos on the number of checks and results.
+    """
     return jsonify(refresh_graylist())
 
+@app.route('/api/edugain/<checkaddress>', methods=['GET'])
+def edugaincheck(checkaddress):
+    """API Call to check the edugain status of a domain.
 
-@app.route('/api/domain/<path:path>', methods=['GET'])
-def apicheckdomain():
-    pass
+    Args:
+        checkaddress (str): The address to check for edugain support.
 
+    Returns:
+        json: The edugain and federation statuses as booleans.
+    """
+    if not app.config['EDUGAIN_CHECK']:
+        raise InvalidAPIUsage('Not available.', status_code=500)
+    federationhit = '"Federated":true'
+    edugainhit = '"eduGAIN-Enabled":true'
+    callurl = app.config['RESTURL']+checkaddress
+    response = requests.get(callurl)
+    # Check, if the appropriate strings are contained in the response.
+    # Response is json, but not fully documented and somewhat unpredictable.
+    if int(str(response.content).find(federationhit)) > 0:
+        edugainfederationresult = True
+    else:
+        edugainfederationresult = False
+    if int(str(response.content).find(edugainhit)) > 0:
+        edugainresult = True
+    else:
+        edugainresult = False
+    return jsonify(edugain=edugainresult,
+                   federation=edugainfederationresult)
 
-@app.route('/api/')
-def edugain_result():
-    """Return info on list status of domain or call eduGAIN isFederatedCheck"""
-    if 'edugain' in request.args.keys():
-        domain = request.args.get('edugain')
-        federationhit = '"Federated":true'
-        edugainhit = '"eduGAIN-Enabled":true'
-        callurl = app.config['RESTURL']+domain
-        response = requests.get(callurl)
-        # Check, if the appropriate strings are contained in the response.
-        # Response is json, but not fully documented and somewhat unpredictable.
-        if int(str(response.content).find(federationhit)) > 0:
-            edugainfederationresult = True
-        else:
-            edugainfederationresult = False
-        if int(str(response.content).find(edugainhit)) > 0:
-            edugainresult = True
-        else:
-            edugainresult = False
-        return jsonify(data=domain,
-                       edugain=edugainresult,
-                       federation=edugainfederationresult)
-    elif 'list' in request.args.keys():
-        domain = request.args.get('list')
-        white = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
-        black = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
-        gray = load_graylist()
-        if domain in white:
-            whiteresult = True
-        else:
-            whiteresult = False
-        if domain in black:
-            blackresult = True
-        else:
-            blackresult = False
-        if domain in gray:
-            grayresult = True
-        else:
-            grayresult = False
-        return jsonify(data=domain,
-                       white=whiteresult,
-                       black=blackresult,
-                       gray=grayresult)
+@app.route('/api/domain/<address>', methods=['GET'])
+def apicheckdomain(address):
+    """API Call to check on which list a domain is.
 
+    Args:
+        address (str): The address to check for list containment.
+
+    Returns:
+        json: The list the address' domain is on.
+    """
+    domain = sanitize_entry(address)
+    if domain in load_list_from_ldap(app.config['LDAP_WHITE_DN']):
+        return jsonify(listed='white')
+    elif domain in load_list_from_ldap(app.config['LDAP_BLACK_DN']):
+        return jsonify(listed='black')
+    elif domain in load_graylist():
+        return jsonify(listed='gray')
+    else:
+        return jsonify(listed=None)
 
 @app.route('/', methods=['GET', 'POST'])
 def mainpage():
-    """Render the main page."""
+    """Render the page."""
     if request.method == 'POST':
         domain_to_list(sanitize_entry(request.form['domain']), request.form['list'])
     return render_template('main.html', edugaincheck=app.config['EDUGAIN_CHECK'])

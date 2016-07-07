@@ -14,12 +14,6 @@ jQuery(document).ready(function($) {
   });
 
   $('#pruefModal').on('shown.bs.modal', function () {
-    $('#pruefModalDecideBtn').prop('disabled', true);
-    $('#pruefModalAlert').toggleClass('alert', false);
-    $('#pruefModalAlert').toggleClass('alert-success', false);
-    $('#pruefModalAlert').toggleClass('alert-danger', false);
-    $('#pruefModalAlert').toggleClass('alert-warning', false);
-    $('#pruefModalDecideBtn').text('Decide');
     var input = $('#InputEmail').val();
     var queryDomain = '';
     var result = '';
@@ -29,72 +23,60 @@ jQuery(document).ready(function($) {
       if (atsymb < 0) { $('#pruefModalAlert').text('Kein @ enthalten.')}
       else {
         queryDomain = input.substring(atsymb);
-        $.ajax({
-          dataType: 'json',
-          url: 'api/',
-          type: 'GET',
-          data: 'list='+queryDomain,
-          success: function(data) { 
-            $('#pruefModalDecideBtn').prop('disabled', false);
-            $('#pruefModalDecideBtn').attr("data-domain", queryDomain);
-            $('#pruefModalAlert').toggleClass('alert', true);
-            $('#pruefModalAlert').toggleClass('alert-success', false);
-            $('#pruefModalAlert').toggleClass('alert-danger', false);
-            $('#pruefModalAlert').toggleClass('alert-warning', true);
-            result = 'Domain ' + queryDomain + ' unbekannt!';
-            if (data.white) {
+        $.getJSON( 'api/domain/'+queryDomain, function( data ) {
+          switch (data.listed) {
+            case 'white':
               $('#pruefModalAlert').toggleClass('alert', true);
               $('#pruefModalAlert').toggleClass('alert-success', true);
-              $('#pruefModalAlert').toggleClass('alert-danger', false);
-              $('#pruefModalAlert').toggleClass('alert-warning', false);
               $('#pruefModalDecideBtn').text('Ändern');
               result = 'Domain ' + queryDomain + ' ist auf Whitelist!';
-            }
-            if (data.gray) {
+              break;
+            case 'black':
               $('#pruefModalAlert').toggleClass('alert', true);
-              $('#pruefModalAlert').toggleClass('alert-success', false);
-              $('#pruefModalAlert').toggleClass('alert-danger', false);
+              $('#pruefModalAlert').toggleClass('alert-danger', true);
+              $('#pruefModalDecideBtn').text('Ändern');
+              result = 'Domain ' + queryDomain + ' ist auf Blacklist!';
+              break;
+            case 'gray':
+              $('#pruefModalAlert').toggleClass('alert', true);
               $('#pruefModalAlert').toggleClass('alert-warning', true);
               $('#pruefModalDecideBtn').text('Ändern');
               result = 'Domain ' + queryDomain + ' ist auf Graylist!';
-            }
-            if (data.black) {
+              break;
+            default:
+              $('#pruefModalDecideBtn').prop('disabled', false);
+              $('#pruefModalDecideBtn').attr("data-domain", queryDomain);
               $('#pruefModalAlert').toggleClass('alert', true);
-              $('#pruefModalAlert').toggleClass('alert-success', false);
-              $('#pruefModalAlert').toggleClass('alert-danger', true);
-              $('#pruefModalAlert').toggleClass('alert-warning', false);
-              $('#pruefModalDecideBtn').text('Ändern');
-              result = 'Domain ' + queryDomain + ' ist auf Blacklist!';
-            }
-            $('#pruefModalAlert').text(result);
+              $('#pruefModalAlert').toggleClass('alert-warning', true);
+              result = 'Domain ' + queryDomain + ' unbekannt!';
           }
-        });
+          $('#pruefModalAlert').text(result);
+        }); 
       }
     }
   });
 
+  $('#pruefModal').on('hidden.bs.modal', function () {
+    $('#pruefModalDecideBtn').prop('disabled', true);
+    $('#pruefModalAlert').toggleClass('alert', false);
+    $('#pruefModalAlert').toggleClass('alert-success', false);
+    $('#pruefModalAlert').toggleClass('alert-danger', false);
+    $('#pruefModalAlert').toggleClass('alert-warning', false);
+    $('#pruefModalDecideBtn').text('Decide');
+    $('#pruefModalAlert').text('...');
+  });
+
   $('#decideModal').on('show.bs.modal', function(e) {
     var queryDomain = $(e.relatedTarget).attr('data-domain')
-    $('#btnWhiteList').prop('disabled', true);
-    $.ajax({
-        dataType: 'json',
-        url: 'api',
-        type: 'GET',
-        data: 'edugain='+queryDomain,
-        success: function(data) { 
-          if (data.edugain || data.federation) {
-            $('#checkEduresultAlert').toggleClass('alert-success', true);
-            $('#checkEduresultAlert').html('<b>Domain '+queryDomain+' hat den eduGain-Test bestanden!</b>');
-            $('#btnWhiteList').prop('disabled', false);
-          } else {
-            $('#checkEduresultAlert').html('Domain '+queryDomain+' hat den eduGain-Test <b>nicht</b> bestanden!');
-          }
+    $.getJSON( 'api/edugain/'+queryDomain, function( data ) {
+        if (data.edugain || data.federation) {
+          $('#checkEduresultAlert').toggleClass('alert-success', true);
+          $('#checkEduresultAlert').html('<b>Domain '+queryDomain+' hat den eduGain-Test bestanden!</b>');
+          $('#btnWhiteList').prop('disabled', false);
+        } else {
+          $('#checkEduresultAlert').html('Domain '+queryDomain+' hat den eduGain-Test <b>nicht</b> bestanden!');
         }
       });
-
-    $('#btnWhiteList').prop('disabled', true);
-    $('#btnGrayList').prop('disabled', true);
-    $('#btnBlackList').prop('disabled', true);
     $('#decideModalTitle').text(queryDomain);
     $('input.domainname').val(queryDomain);
     $('#manualcheckbutton').attr("href", 'http://'+queryDomain.replace('@',''));
@@ -103,6 +85,9 @@ jQuery(document).ready(function($) {
   $('#decideModal').on('hidden.bs.modal', function(e) {
     $('#checkEduresultAlert').toggleClass('alert-success', false);
     $('#checkEduresultAlert').html('Teste eduGain ... <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>');
+    $('#btnWhiteList').prop('disabled', true);
+    $('#btnGrayList').prop('disabled', true);
+    $('#btnBlackList').prop('disabled', true);
   });
 
   $('#refreshmailsModal').on('show.bs.modal', function(e) {
@@ -110,19 +95,9 @@ jQuery(document).ready(function($) {
 
     $('#refreshmailsModalButton').on('click', function(){
       $('#refreshmailsModalText').html('Working ... <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>');
-
-      $.ajax({
-        dataType: 'json',
-        url: 'api/refresh',
-        type: 'GET',
-        success: function(data) { 
-          console.log(data);
-          $('#refreshmailsModalText').html('Adressen auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>E-Mail-Adressen von bislang unbekannten Domains: '+data['mails_from_new_domains']);
-        }
+      $.getJSON( 'api/refresh', function( data ) {
+        $('#refreshmailsModalText').html('Adressen auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>E-Mail-Adressen von bislang unbekannten Domains: '+data['mails_from_new_domains']);
       });
-
-
-
     });
 
   });

@@ -96,7 +96,7 @@ jQuery(document).ready(function($) {
     $('#refreshmailsModalButton').on('click', function(){
       $('#refreshmailsModalText').html('Working ... <span class="glyphicon glyphicon-refresh glyphicon-spin"></span>');
       $.getJSON( 'api/refresh', function( data ) {
-        $('#refreshmailsModalText').html('Adressen auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>E-Mail-Adressen von bislang unbekannten Domains: '+data['mails_from_new_domains']);
+        $('#refreshmailsModalText').html('Adressen schon auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen schon auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>Adressen jetzt neu auf der Graylist: '+data['mails_from_new_domains']+' <br/>Adressen automatisch neu auf der Whitelist: '+data['mails_automatically_whitelisted']);
         loadlist('gray');
       });
     });

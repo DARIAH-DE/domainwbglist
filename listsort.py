@@ -165,6 +165,7 @@ def refresh_graylist():
     blackcounter = 0
     graycounter = 0
     newlyadded = 0
+    directtowhite = 0
     for dn,entry in mails:
         for mailaddress in entry['mail']:
             domain = sanitize_entry(mailaddress)
@@ -174,11 +175,40 @@ def refresh_graylist():
                 blackcounter += 1
             elif domain in gray:
                 graycounter += 1
+            elif edugaincheck(domain)['edugain'] or edugaincheck(domain)['federation']:
+                directtowhite +=1
+                domain_to_list(domain, 'white')
             elif domain != '':
                 newlyadded += 1
                 domain_to_list(domain, 'gray')
     results = {'mails_on_whitelist': whitecounter, 'mails_on_blacklist': blackcounter,
-            'mails_on_graylist': graycounter, 'mails_from_new_domains': newlyadded}
+            'mails_on_graylist': graycounter, 'mails_from_new_domains': newlyadded, 'mails_automatically_whitelisted': directtowhite}
+    return results
+
+def edugaincheck(checkaddress):
+    """Check an address against edugain API.
+
+    Args:
+        checkaddress (str): Address or domain to check against API.
+
+    Returns:
+        dict: Results on edugain and federation support for the domain.
+    """
+    federationhit = '"Federated":true'
+    edugainhit = '"eduGAIN-Enabled":true'
+    callurl = app.config['RESTURL']+checkaddress
+    response = requests.get(callurl)
+    # Check, if the appropriate strings are contained in the response.
+    # Response is json, but not fully documented and somewhat unpredictable.
+    if int(str(response.content).find(federationhit)) > 0:
+        edugainfederationresult = True
+    else:
+        edugainfederationresult = False
+    if int(str(response.content).find(edugainhit)) > 0:
+        edugainresult = True
+    else:
+        edugainresult = False
+    results = {'edugain': edugainresult, 'federation': edugainfederationresult}
     return results
 
 def domain_to_list(domain, listname):
@@ -254,10 +284,13 @@ def apirefreshcall():
     Returns:
         json: Infos on the number of checks and results.
     """
-    return jsonify(refresh_graylist())
+    if not userisadmin():
+        raise InvalidAPIUsage('Not available.', status_code=500)
+    else:
+        return jsonify(refresh_graylist())
 
 @app.route('/api/edugain/<checkaddress>', methods=['GET'])
-def edugaincheck(checkaddress):
+def apiedugaincheck(checkaddress):
     """API Call to check the edugain status of a domain.
 
     Args:
@@ -268,22 +301,7 @@ def edugaincheck(checkaddress):
     """
     if not (app.config['EDUGAIN_CHECK'] and userisadmin()):
         raise InvalidAPIUsage('Not available.', status_code=500)
-    federationhit = '"Federated":true'
-    edugainhit = '"eduGAIN-Enabled":true'
-    callurl = app.config['RESTURL']+checkaddress
-    response = requests.get(callurl)
-    # Check, if the appropriate strings are contained in the response.
-    # Response is json, but not fully documented and somewhat unpredictable.
-    if int(str(response.content).find(federationhit)) > 0:
-        edugainfederationresult = True
-    else:
-        edugainfederationresult = False
-    if int(str(response.content).find(edugainhit)) > 0:
-        edugainresult = True
-    else:
-        edugainresult = False
-    return jsonify(edugain=edugainresult,
-                   federation=edugainfederationresult)
+    return jsonify(edugaincheck(sanitize_entry(checkaddress)))
 
 @app.route('/api/domain/<address>', methods=['GET'])
 def apicheckdomain(address):

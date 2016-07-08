@@ -98,6 +98,7 @@ jQuery(document).ready(function($) {
       $.getJSON( 'api/refresh', function( data ) {
         $('#refreshmailsModalText').html('Adressen schon auf der Whitelist: '+data['mails_on_whitelist']+' <br/>Adressen schon auf der Blacklist: '+data['mails_on_blacklist']+' <br/>Adressen noch in der Graylist: '+data['mails_on_graylist']+' <br/>Adressen jetzt neu auf der Graylist: '+data['mails_from_new_domains']+' <br/>Adressen automatisch neu auf der Whitelist: '+data['mails_automatically_whitelisted']);
         loadlist('gray');
+        loadlist('white');
       });
     });
 

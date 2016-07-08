@@ -161,6 +161,7 @@ def refresh_graylist():
     white = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
     black = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
     gray = load_graylist()
+    gray_fresh = []
     whitecounter = 0
     blackcounter = 0
     graycounter = 0
@@ -175,11 +176,12 @@ def refresh_graylist():
                 blackcounter += 1
             elif domain in gray:
                 graycounter += 1
-            elif edugaincheck(domain)['edugain'] or edugaincheck(domain)['federation']:
+            elif (not domain in gray_fresh) and (edugaincheck(domain)['edugain'] or edugaincheck(domain)['federation']):
                 directtowhite +=1
                 domain_to_list(domain, 'white')
             elif domain != '':
                 newlyadded += 1
+                gray_fresh.append(domain)
                 domain_to_list(domain, 'gray')
     results = {'mails_on_whitelist': whitecounter, 'mails_on_blacklist': blackcounter,
             'mails_on_graylist': graycounter, 'mails_from_new_domains': newlyadded, 'mails_automatically_whitelisted': directtowhite}

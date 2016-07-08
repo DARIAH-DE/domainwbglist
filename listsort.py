@@ -34,7 +34,6 @@ from flask_sso import SSO
 app = Flask(__name__)
 app.config.update(
     RESTURL='https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
-    LISTFILES={"white" : "white.txt", "gray":"gray.txt", "black":"black.txt"},
     EDUGAIN_CHECK=True
 )
 app.config.from_pyfile('settings_local.py', silent=True)
@@ -133,14 +132,14 @@ def remove_from_ldap_list(domain,ldapdn):
         # not even on there
         pass
 
-def load_graylist():
-    """Load the graylist from file.
+def load_greylist():
+    """Load the greylist from file.
 
     Returns:
-        list of str: Sorted array of domains in graylist.
+        list of str: Sorted array of domains in greylist.
     """
     try:
-        openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "r")
+        openfile = open(os.path.join(os.path.dirname(__file__),'grey.txt'), "r")
     except IOError:
         return []
     listarray = []
@@ -151,23 +150,23 @@ def load_graylist():
     openfile.close()
     return listarray
 
-def save_graylist(listarray):
-    """Write the graylist back to file.
+def save_greylist(listarray):
+    """Write the greylist back to file.
 
     Args:
-        listarray (list of str): Array of domains to save as graylist.
+        listarray (list of str): Array of domains to save as greylist.
 
     Returns:
         bool: True.
     """
-    openfile = open(os.path.join(os.path.dirname(__file__),'gray.txt'), "w")
+    openfile = open(os.path.join(os.path.dirname(__file__),'grey.txt'), "w")
     for item in listarray:
         openfile.write("%s\n" % item)
     openfile.close()
     return True
 
-def refresh_graylist():
-    """Refresh the graylist by loading all mail addresses and adding them if they are not yet known.
+def refresh_greylist():
+    """Refresh the greylist by loading all mail addresses and adding them if they are not yet known.
 
     Returns:
         dict: Infos on the number of checks and results.
@@ -175,11 +174,11 @@ def refresh_graylist():
     mails = l.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
     white = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
     black = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
-    gray = load_graylist()
-    gray_fresh = []
+    grey = load_greylist()
+    grey_fresh = []
     whitecounter = 0
     blackcounter = 0
-    graycounter = 0
+    greycounter = 0
     newlyadded = 0
     directtowhite = 0
     for dn,entry in mails:
@@ -189,17 +188,17 @@ def refresh_graylist():
                 whitecounter += 1
             elif domain in black:
                 blackcounter += 1
-            elif domain in gray:
-                graycounter += 1
-            elif (not domain in gray_fresh) and (edugaincheck(domain)['edugain'] or edugaincheck(domain)['federation']):
+            elif domain in grey:
+                greycounter += 1
+            elif (not domain in grey_fresh) and (edugaincheck(domain)['edugain'] or edugaincheck(domain)['federation']):
                 directtowhite +=1
                 domain_to_list(domain, 'white')
             elif domain != '':
                 newlyadded += 1
-                gray_fresh.append(domain)
-                domain_to_list(domain, 'gray')
+                grey_fresh.append(domain)
+                domain_to_list(domain, 'grey')
     results = {'mails_on_whitelist': whitecounter, 'mails_on_blacklist': blackcounter,
-            'mails_on_graylist': graycounter, 'mails_from_new_domains': newlyadded, 'mails_automatically_whitelisted': directtowhite}
+            'mails_on_greylist': greycounter, 'mails_from_new_domains': newlyadded, 'mails_automatically_whitelisted': directtowhite}
     return results
 
 def edugaincheck(checkaddress):
@@ -240,9 +239,9 @@ def domain_to_list(domain, listname):
     """
     domain = sanitize_entry(domain)
     if domain != '':
-        graylistarray = load_graylist()
+        greylistarray = load_greylist()
         try:
-            graylistarray.remove(domain)
+            greylistarray.remove(domain)
         except ValueError:
             pass
         if listname == 'white':
@@ -254,8 +253,8 @@ def domain_to_list(domain, listname):
         else:
             remove_from_ldap_list(domain,app.config['LDAP_WHITE_DN'])
             remove_from_ldap_list(domain,app.config['LDAP_BLACK_DN'])
-            graylistarray.append(domain)
-        save_graylist(graylistarray)
+            greylistarray.append(domain)
+        save_greylist(greylistarray)
         return True
     else:
         return False
@@ -294,11 +293,11 @@ def apilistcall(listname):
     elif listname == 'black':
         return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps(load_graylist()), status=200, mimetype='application/json')
+        return Response(response=json.dumps(load_greylist()), status=200, mimetype='application/json')
 
 @app.route('/api/refresh', methods=['GET'])
 def apirefreshcall():
-    """API Call to refresh the graylist.
+    """API Call to refresh the greylist.
 
     Returns:
         json: Infos on the number of checks and results.
@@ -306,7 +305,7 @@ def apirefreshcall():
     if not userisadmin():
         raise InvalidAPIUsage('Not available.', status_code=500)
     else:
-        return jsonify(refresh_graylist())
+        return jsonify(refresh_greylist())
 
 @app.route('/api/edugain/<checkaddress>', methods=['GET'])
 def apiedugaincheck(checkaddress):
@@ -337,11 +336,11 @@ def apicheckdomain(address):
         return jsonify(listed='white')
     elif domain in load_list_from_ldap(app.config['LDAP_BLACK_DN']):
         return jsonify(listed='black')
-    elif domain in load_graylist():
-        return jsonify(listed='gray')
+    elif domain in load_greylist():
+        return jsonify(listed='grey')
     else:
         if 'user' in session:
-            domain_to_list(domain, 'gray')
+            domain_to_list(domain, 'grey')
         return jsonify(listed=None)
 
 @app.route('/', methods=['GET', 'POST'])

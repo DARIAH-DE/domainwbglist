@@ -27,7 +27,7 @@ Install flask with its components from `reqirements.txt` into a virtualenv namen
 
 Enforce Shibboleth authentication at `/login`.
 
-Make sure the server can write to `gray.txt`.
+Make sure the server can write to `grey.txt`.
 
 The following options must be set in `settings_local.py`:
 ````

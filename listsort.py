@@ -287,6 +287,8 @@ def apilistcall(listname):
     Returns:
         json: Array of the domains on the list.
     """
+    if not 'user' in session:
+        raise InvalidAPIUsage('Not available.', status_code=500)
     if listname == 'white':
         return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_WHITE_DN'])), status=200, mimetype='application/json')
     elif listname == 'black':

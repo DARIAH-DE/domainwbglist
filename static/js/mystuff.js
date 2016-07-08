@@ -100,35 +100,29 @@ jQuery(document).ready(function($) {
 
 function checkdomain(queryDomain){
   $.getJSON( 'api/domain/'+queryDomain, function( data ) {
+    $('#pruefModalAlert').toggleClass('alert', true);
     switch (data.listed) {
       case 'white':
-        $('#pruefModalDecideBtn').prop('disabled', false);
-        $('#pruefModalAlert').toggleClass('alert', true);
         $('#pruefModalAlert').toggleClass('alert-success', true);
         $('#pruefModalDecideBtn').text('Ändern');
         result = 'Domain ' + queryDomain + ' ist auf Whitelist!';
         break;
       case 'black':
-        $('#pruefModalDecideBtn').prop('disabled', false);
-        $('#pruefModalAlert').toggleClass('alert', true);
         $('#pruefModalAlert').toggleClass('alert-danger', true);
         $('#pruefModalDecideBtn').text('Ändern');
         result = 'Domain ' + queryDomain + ' ist auf Blacklist!';
         break;
       case 'grey':
-        $('#pruefModalDecideBtn').prop('disabled', false);
-        $('#pruefModalAlert').toggleClass('alert', true);
         $('#pruefModalAlert').toggleClass('alert-warning', true);
         $('#pruefModalDecideBtn').text('Ändern');
         result = 'Domain ' + queryDomain + ' ist auf Greylist!';
         break;
       default:
-        $('#pruefModalDecideBtn').prop('disabled', false);
-        $('#pruefModalDecideBtn').attr("data-domain", queryDomain);
-        $('#pruefModalAlert').toggleClass('alert', true);
         $('#pruefModalAlert').toggleClass('alert-warning', true);
         result = 'Domain ' + queryDomain + ' unbekannt!';
     }
+    $('#pruefModalDecideBtn').prop('disabled', false);
+    $('#pruefModalDecideBtn').attr("data-domain", queryDomain);
     $('#pruefModalAlert').text(result);
   });
 }

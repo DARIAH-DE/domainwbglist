@@ -3,4 +3,5 @@ flask-bootstrap
 requests[security]
 pyldap
 flask-sso
-
+pytest
+Flask-Testing

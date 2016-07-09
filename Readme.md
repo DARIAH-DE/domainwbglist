@@ -6,19 +6,19 @@ Setup
 -----
 
 Install python dependencies on Ubuntu:
-````
+```
 apt-get install python-pip python-virtualenv python-dev build-essential libffi-dev python-ldap libldap2-dev libsasl2-dev libssl-dev
-````
+```
 
 Start by creating a virtualenv
-````
+```
 virtualenv venv
 source venv/bin/activate
-````
+```
 than install the dependencies
-````
+```
 pip install -r requirements.txt
-````
+```
 
 Config
 ------
@@ -30,7 +30,7 @@ Enforce Shibboleth authentication at `/login`.
 Make sure the server can write to `grey.txt`.
 
 The following options must be set in `settings_local.py`:
-````
+```python
 SECRET_KEY = '*************'
 
 LDAP_URL = 'ldap://mu.ldap.vm'
@@ -43,21 +43,15 @@ LDAP_BLACK_DN = 'dc=blacklist,dc=example,dc=com'
 LDAP_MAIL_SEARCH_BASE = 'dc=example,dc=com'
 
 ADMIN_GROUPS = 'admin'
-
-SSO_ATTRIBUTE_MAP = {
-    'eppn': (True, 'username'),
-    'cn': (True, 'fullname'),
-    'mail': (True, 'email'),
-    'isMemberOf': (False, 'isMemberOf')
-}
-````
+```
+If needed, you can overwrite `SSO_ATTRIBUTE_MAP`.
 
 To enable debugging add
-````
-DEBUG=True
-````
+```python
+DEBUG = True
+```
 If you want to enable the use of eduGAIN's isFederatedCheck, add
-````
-EDUGAIN_CHECK=True
-````
+```python
+EDUGAIN_CHECK = True
+```
 

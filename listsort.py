@@ -33,8 +33,14 @@ from flask_sso import SSO
 
 app = Flask(__name__)
 app.config.update(
-    RESTURL='https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
-    EDUGAIN_CHECK=True
+    RESTURL = 'https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
+    EDUGAIN_CHECK = True,
+    SSO_ATTRIBUTE_MAP = {
+        'eppn': (True, 'username'),
+        'cn': (True, 'fullname'),
+        'mail': (True, 'email'),
+        'isMemberOf': (False, 'isMemberOf')
+    }
 )
 app.config.from_pyfile('settings_local.py', silent=True)
 
@@ -42,8 +48,69 @@ app.config.setdefault('SSO_ATTRIBUTE_MAP', app.config['SSO_ATTRIBUTE_MAP'])
 app.config.setdefault('SSO_LOGIN_URL', '/login')
 ext = SSO(app=app)
 
-l = ldap.initialize(app.config['LDAP_URL'])
-l.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+class LDAPInterface(object):
+    """Handle communication with the LDAP server."""
+
+    def __init__(self):
+        """connect to ldap on init"""
+        self.con = ldap.initialize(app.config['LDAP_URL'])
+        self.con.simple_bind_s(app.config['LDAP_USER'],app.config['LDAP_PASS'])
+
+    def __exit__(self, *err):
+        """disconnects from ldap on exit"""
+        self.con.unbind_s()
+
+    def getallmails():
+        return self.con.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
+
+    def load_list(self,ldapdn):
+        """Load a list from an ldap entry.
+
+        Args:
+            ldapdn (str): The DN of the ldap entry to load.
+
+        Returns:
+            list of str: Sorted array of domains in specified list.
+        """
+        obj=self.con.search_s(ldapdn, ldap.SCOPE_BASE, attrlist=["cNAMERecord"])
+        for dn,entry in obj:
+            res = entry['cNAMERecord']
+        res.sort()
+        return res
+
+    def add_to_list(self,domain,ldapdn):
+        """Add a domain to an ldap entry.
+
+        Args:
+            domain (str): The domain to add.
+            ldapdn (str): The DN of the ldap entry to remove the domain from.
+
+        Returns:
+            bool: Whether or not it was actually added.
+        """
+        try:
+            self.con.modify_s(ldapdn,[(ldap.MOD_ADD,'cNAMERecord',domain)])
+        except ldap.TYPE_OR_VALUE_EXISTS:
+            # already there
+            return False
+        return True
+
+    def remove_from_list(self,domain,ldapdn):
+        """Remove a domain from an ldap entry.
+
+        Args:
+            domain (str): The domain to remove.
+            ldapdn (str): The DN of the ldap entry to add the domain to.
+
+        Returns:
+            bool: Whether or not it was actually removed.
+        """
+        try:
+            self.con.modify_s(ldapdn,[(ldap.MOD_DELETE,'cNAMERecord',domain)])
+        except ldap.NO_SUCH_ATTRIBUTE:
+            # not even on there
+            return False
+        return True
 
 def userisadmin():
     """Whether the currently logged in user is an admin.
@@ -51,7 +118,7 @@ def userisadmin():
     Returns:
         bool: ebd.
     """
-    ret = False
+    ret = app.debug
     if 'user' in session:
         user_groups = session['user'].get('isMemberOf').split(';')
         admin_groups = app.config['ADMIN_GROUPS'].split(';')
@@ -90,47 +157,6 @@ def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
     response.status_code = error.status_code
     return response
-
-def load_list_from_ldap(ldapdn):
-    """Load a list from an ldap entry.
-
-    Args:
-        ldapdn (str): The DN of the ldap entry to load.
-
-    Returns:
-        list of str: Sorted array of domains in specified list.
-    """
-    obj=l.search_s(ldapdn, ldap.SCOPE_BASE, attrlist=["cNAMERecord"])
-    for dn,entry in obj:
-        res = entry['cNAMERecord']
-    res.sort()
-    return res
-
-def add_to_ldap_list(domain,ldapdn):
-    """Add a domain to an ldap entry.
-
-    Args:
-        domain (str): The domain to add.
-        ldapdn (str): The DN of the ldap entry to remove the domain from.
-    """
-    try:
-        l.modify_s(ldapdn,[(ldap.MOD_ADD,'cNAMERecord',domain)])
-    except ldap.TYPE_OR_VALUE_EXISTS:
-        # already there
-        pass
-
-def remove_from_ldap_list(domain,ldapdn):
-    """Remove a domain from an ldap entry.
-
-    Args:
-        domain (str): The domain to remove.
-        ldapdn (str): The DN of the ldap entry to add the domain to.
-    """
-    try:
-        l.modify_s(ldapdn,[(ldap.MOD_DELETE,'cNAMERecord',domain)])
-    except ldap.NO_SUCH_ATTRIBUTE:
-        # not even on there
-        pass
 
 def load_greylist():
     """Load the greylist from file.
@@ -171,9 +197,10 @@ def refresh_greylist():
     Returns:
         dict: Infos on the number of checks and results.
     """
-    mails = l.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
-    white = load_list_from_ldap(app.config['LDAP_WHITE_DN'])
-    black = load_list_from_ldap(app.config['LDAP_BLACK_DN'])
+    l = LDAPInterface()
+    mails = l.getallmails()
+    white = l.load_list(app.config['LDAP_WHITE_DN'])
+    black = l.load_list(app.config['LDAP_BLACK_DN'])
     grey = load_greylist()
     grey_fresh = []
     whitecounter = 0
@@ -244,15 +271,16 @@ def domain_to_list(domain, listname):
             greylistarray.remove(domain)
         except ValueError:
             pass
+        l = LDAPInterface()
         if listname == 'white':
-            add_to_ldap_list(domain,app.config['LDAP_WHITE_DN'])
-            remove_from_ldap_list(domain,app.config['LDAP_BLACK_DN'])
+            l.add_to_list(domain,app.config['LDAP_WHITE_DN'])
+            l.remove_from_list(domain,app.config['LDAP_BLACK_DN'])
         elif listname == 'black':
-            add_to_ldap_list(domain,app.config['LDAP_BLACK_DN'])
-            remove_from_ldap_list(domain,app.config['LDAP_WHITE_DN'])
+            l.add_to_list(domain,app.config['LDAP_BLACK_DN'])
+            l.remove_from_list(domain,app.config['LDAP_WHITE_DN'])
         else:
-            remove_from_ldap_list(domain,app.config['LDAP_WHITE_DN'])
-            remove_from_ldap_list(domain,app.config['LDAP_BLACK_DN'])
+            l.remove_from_list(domain,app.config['LDAP_WHITE_DN'])
+            l.remove_from_list(domain,app.config['LDAP_BLACK_DN'])
             greylistarray.append(domain)
         save_greylist(greylistarray)
         return True
@@ -286,12 +314,13 @@ def apilistcall(listname):
     Returns:
         json: Array of the domains on the list.
     """
-    if not 'user' in session:
+    if not ('user' in session or app.debug):
         raise InvalidAPIUsage('Not available.', status_code=500)
+    l = LDAPInterface()
     if listname == 'white':
-        return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_WHITE_DN'])), status=200, mimetype='application/json')
+        return Response(response=json.dumps(l.load_list(app.config['LDAP_WHITE_DN'])), status=200, mimetype='application/json')
     elif listname == 'black':
-        return Response(response=json.dumps(load_list_from_ldap(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
+        return Response(response=json.dumps(l.load_list(app.config['LDAP_BLACK_DN'])), status=200, mimetype='application/json')
     else:
         return Response(response=json.dumps(load_greylist()), status=200, mimetype='application/json')
 
@@ -332,9 +361,10 @@ def apicheckdomain(address):
         json: The list the address' domain is on.
     """
     domain = sanitize_entry(address)
-    if domain in load_list_from_ldap(app.config['LDAP_WHITE_DN']):
+    l = LDAPInterface()
+    if domain in l.load_list(app.config['LDAP_WHITE_DN']):
         return jsonify(listed='white')
-    elif domain in load_list_from_ldap(app.config['LDAP_BLACK_DN']):
+    elif domain in l.load_list(app.config['LDAP_BLACK_DN']):
         return jsonify(listed='black')
     elif domain in load_greylist():
         return jsonify(listed='grey')
@@ -349,6 +379,8 @@ def mainpage():
     username = None
     if 'user' in session:
         username = session['user'].get('username')
+    elif app.debug:
+        username = 'DebugMode@flask.app'
     if request.method == 'POST' and userisadmin():
         domain_to_list(sanitize_entry(request.form['domain']), request.form['list'])
     return render_template('main.html', username=username, userisadmin=userisadmin(), edugaincheck=app.config['EDUGAIN_CHECK'])

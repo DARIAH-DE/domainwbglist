@@ -5,3 +5,4 @@ pyldap
 flask-sso
 pytest
 Flask-Testing
+mock

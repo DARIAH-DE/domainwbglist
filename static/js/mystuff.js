@@ -16,9 +16,9 @@
 
 jQuery(document).ready(function($) {
 
-  for (var currlist of ['white','black','grey']) {
+  $.each(['white','black','grey'], function( index, currlist ) {
     loadlist(currlist);
-  };
+  });
 
   $('#manualcheckbutton').on('click', function(){
     var newwindow = window.open($(this).attr('href'),'','height=700,width=900,scrollbars=yes,resizable=yes,location=yes,status=yes,toolbar=yes');
@@ -128,13 +128,14 @@ function checkdomain(queryDomain){
 }
 
 function loadlist(currlist) {
-  $.getJSON( 'api/list/'+currlist, function( data ) {
-    var items = [];
-    $.each( data, function( key, val ) {
-      items.push('<a data-domain="'+val+'" data-toggle="modal" href="#decideModal" class="list-group-item">'+val+'</a>')
+  return $.getJSON( 'api/list/'+currlist)
+    .done( function( data ) {
+      var items = [];
+      $.each( data, function( key, val ) {
+        items.push('<a data-domain="'+val+'" data-toggle="modal" href="#decideModal" class="list-group-item">'+val+'</a>')
+      });
+      $('#'+currlist+'list').append(items);
+      $('#'+currlist+'number').text(items.length);
     });
-    $('#'+currlist+'list').append(items);
-    $('#'+currlist+'number').text(items.length);
-  });
 };
 

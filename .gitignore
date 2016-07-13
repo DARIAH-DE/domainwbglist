@@ -1,2 +1,5 @@
-venv
+.cache
+PhantomJS_2.1.1_(Mac_OS_X_0.0.0)
+__pycache__
 settings_local.*
+venv

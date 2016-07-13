@@ -33,7 +33,7 @@ from flask_sso import SSO
 
 app = Flask(__name__)
 app.config.update(
-    RESTURL = 'https://wiki.edugain.org/isFederatedCheck/?format=json&data=',
+    RESTURL = 'https://technical.edugain.org/isFederatedCheck/?format=json&data=',
     GREYLISTFILE = os.path.join(os.path.dirname(__file__),'grey.txt'),
     EDUGAIN_CHECK = True,
     SSO_ATTRIBUTE_MAP = {

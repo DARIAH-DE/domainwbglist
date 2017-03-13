@@ -1,0 +1,21 @@
+{
+  "name": "domainwbglist",
+  "scripts": {
+    "test": "karma start jstests/test.conf.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DARIAH-DE/domainwbglist.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DARIAH-DE/domainwbglist/issues"
+  },
+  "homepage": "https://github.com/DARIAH-DE/domainwbglist#readme",
+  "devDependencies": {
+    "karma": "^1.5.0",
+    "karma-junit-reporter": "^1.2.0",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "karma-qunit": "^1.2.1",
+    "qunitjs": "^2.2.0"
+  }
+}

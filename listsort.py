@@ -61,7 +61,7 @@ class LDAPInterface(object):
         """disconnects from ldap on exit"""
         self.con.unbind_s()
 
-    def getallmails():
+    def getallmails(self):
         return self.con.search_s(app.config['LDAP_MAIL_SEARCH_BASE'], ldap.SCOPE_SUBTREE, filterstr='(mail=*)', attrlist=["mail"])
 
     def load_list(self,ldapdn):

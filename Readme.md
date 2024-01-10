@@ -1,6 +1,7 @@
 Domain List sorter
 ==================
 
+Moved to https://gitlab.gwdg.de/dariah-de/domainwbglist.
 
 Setup
 -----
